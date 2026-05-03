@@ -1,3 +1,4 @@
+
 import argparse
 import warnings
 import math
@@ -113,12 +114,19 @@ KEY_METRICS      = ["Accuracy","F1","ROC-AUC","PR-AUC","Sensitivity","Specificit
 # 3.  DATA LOADING & PREPROCESSING
 # ─────────────────────────────────────────────────────────────
 def load_dataset(path: str) -> pd.DataFrame:
-
+    """
+    Load a UCI Heart Disease CSV.
+    Handles:
+      - Files with or without a header row
+      - Missing values encoded as '?' or NaN
+      - Multi-class target (0 = healthy, 1-4 = disease) → binarized
+    """
     path = str(path)
     if not os.path.isfile(path):
         print(f"  [ERROR] File not found: {path}")
         sys.exit(1)
 
+    # Peek at first row to detect header
     peek = pd.read_csv(path, nrows=1, header=None)
     has_header = not pd.to_numeric(peek.iloc[0, 0], errors="coerce") == peek.iloc[0, 0]
 
@@ -128,11 +136,11 @@ def load_dataset(path: str) -> pd.DataFrame:
         na_values=["?"]
     )
 
-    
+    # Assign standard UCI column names if no header / wrong column count
     if df.shape[1] == 14 and not has_header:
         df.columns = UCI_COLUMNS
     elif df.shape[1] == 14 and has_header:
-        
+        # Keep user's header but rename last column to 'target' if needed
         cols = list(df.columns)
         if cols[-1] != "target":
             cols[-1] = "target"
@@ -144,12 +152,17 @@ def load_dataset(path: str) -> pd.DataFrame:
         print(f"          Pass --target <colname> to specify it.")
         sys.exit(1)
 
+    # Binarize target
     df["target"] = (pd.to_numeric(df["target"], errors="coerce") > 0).astype(int)
     return df
 
 
 def preprocess(df: pd.DataFrame):
-
+    """
+    Impute → encode → split (70/15/15 stratified) → scale.
+    Returns train/val/test splits + metadata for deep models.
+    """
+    # Identify which UCI columns are present
     num_cols = [c for c in NUMERICAL_COLS   if c in df.columns]
     cat_cols = [c for c in CATEGORICAL_COLS if c in df.columns]
     all_feat  = num_cols + cat_cols
@@ -157,6 +170,7 @@ def preprocess(df: pd.DataFrame):
     X = df[all_feat].copy()
     y = df["target"].values
 
+    # Impute
     if num_cols:
         X[num_cols] = SimpleImputer(strategy="median").fit_transform(X[num_cols])
     if cat_cols:
@@ -166,12 +180,13 @@ def preprocess(df: pd.DataFrame):
         for col in cat_cols:
             X[col] = le.fit_transform(X[col])
 
+    # Split
     X_tr, X_tmp, y_tr, y_tmp = train_test_split(
         X, y, test_size=0.30, random_state=SEED, stratify=y)
     X_va, X_te, y_va, y_te = train_test_split(
         X_tmp, y_tmp, test_size=0.50, random_state=SEED, stratify=y_tmp)
 
-    
+    # Scale numerical only (fit on train)
     if num_cols:
         sc = StandardScaler()
         X_tr[num_cols] = sc.fit_transform(X_tr[num_cols])
@@ -190,7 +205,7 @@ def preprocess(df: pd.DataFrame):
 # ─────────────────────────────────────────────────────────────
 def full_evaluate(model_name: str, dataset_name: str,
                   y_true, y_pred, y_prob) -> dict:
-    
+    """Compute all 10 metrics, print per-model block, return dict."""
     cm             = confusion_matrix(y_true, y_pred)
     tn, fp, fn, tp = cm.ravel()
 
@@ -248,6 +263,7 @@ def full_evaluate(model_name: str, dataset_name: str,
 if HAS_TORCH:
 
     class FeatureTokenizer(nn.Module):
+        """Per-feature embedding: numerical → linear projection, categorical → lookup."""
         def __init__(self, n_num, cat_cards, d):
             super().__init__()
             self.n_num = n_num
