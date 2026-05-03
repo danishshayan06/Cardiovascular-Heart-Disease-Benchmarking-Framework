@@ -7,7 +7,7 @@ This framework provides a unified pipeline for benchmarking the **FT-Transformer
 To ensure the script executes correctly, maintain the following directory structure:
 ```text
 /project-root
-├── benchmark_3.py       # Main execution script
+├── benchmark.py       # Main execution script
 ├── cleveland.csv        # Primary Dataset
 ├── hungarian.csv        # Supplementary Dataset
 ├── switzerland.csv      # Supplementary Dataset
@@ -25,13 +25,13 @@ To ensure the script executes correctly, maintain the following directory struct
 ### **Basic Execution**
 To run the benchmark on a single local dataset:
 ```bash
-python benchmark_3.py --data cleveland.csv
+python benchmark.py --data cleveland.csv
 ```
 
 ### **Multi-Dataset Benchmarking**
 To perform a comparative analysis across multiple datasets simultaneously:
 ```bash
-python benchmark_3.py --data cleveland.csv hungarian.csv switzerland.csv
+python benchmark.py --data cleveland.csv hungarian.csv switzerland.csv
 ```
 
 ### **Command Line Arguments**
@@ -61,6 +61,3 @@ The framework generates 10 distinct metrics per model to ensure rigorous experim
 *   **Reproducibility:** Seeded with `SEED = 42` to ensure consistent results across different runs.
 
 ---
-**Course:** AI2002 — Artificial Intelligence  
-**Institution:** FAST NUCES, Lahore Campus  
-**Submission Date:** May 3, 2026
